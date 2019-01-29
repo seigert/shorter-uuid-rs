@@ -1,0 +1,24 @@
+[package]
+name = "shorter_uuid"
+version = "0.1.0"
+edition = "2018"
+authors = ["Alexey Shuksto <alexey@shuksto.name>"]
+description = "Simple Uuid shortener for `uuid-rs` crate."
+license = "Apache-2.0 OR MIT"
+readme = "README.md"
+repository = "https://github.com/seigert/shorter-uuid-rs"
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+lazy_static = "1.2"
+proptest = { version = "0.8", optional = true }
+uuid = { version = "0.7", default_features = false }
+
+[dev-dependencies]
+version-sync = "0.7"
+uuid = "0.7"
+
+[features]
+default = ["proptest"]
