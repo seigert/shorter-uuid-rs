@@ -36,7 +36,7 @@
 //!     // Expands string via `Shorten` trait
 //!     // and `BASE57` alphabet (default).
 //!     let e = Uuid::expand("mavTAjNm4NVztDwh4gdSrQ")?;
-//!     assert_eq!(e, u);
+//!     assert_eq!(e, s);
 //!     Ok(())
 //! }
 //! ```
@@ -45,7 +45,7 @@
 //! [`BASE62`]: struct.BASE62.html
 //! [`BASE57`]: struct.BASE57.html
 
-// `shorten_uuid` types in rustdoc of other crates get linked to here.
+// `shorter_uuid` types in rustdoc of other crates get linked to here.
 #![doc(html_root_url = "https://docs.rs/shorter_uuid/0.1.0")]
 
 use std::fmt;
@@ -73,12 +73,8 @@ pub struct ShortUuid {
 
 /// Extension trait that allows expansion of uuid-like data
 /// from shortened string representation.
-pub trait Expand
-where
-    Self: Sized,
-{
-    /// Expands given string into `Self`. Uses [`BASE57`] alphabet for expansion.
-    /// Intermediate [`ShortUuid`] is dropped immediately after expansion.
+pub trait Expand {
+    /// Expands given string into [`ShortUuid`]. Uses [`BASE57`] alphabet for expansion.
     ///
     /// # Errors
     /// * [`Error::AlphabetOverflow`]
@@ -96,19 +92,18 @@ where
     /// # fn main() -> Result<(), Box<Error>> {
     /// let u = Uuid::parse_str("806d0969-95b3-433b-976f-774611fdacbb")?;
     /// let e = Uuid::expand("mavTAjNm4NVztDwh4gdSrQ")?;
-    /// assert_eq!(e, u);
+    /// assert_eq!(*(&e as &Uuid), u);
     /// #     Ok(())
     /// # }
     /// ```
     /// [`BASE57`]: struct.BASE57.html
     /// [`ShortUuid`]: struct.ShortUuid.html
     /// [`Error::AlphabetOverflow`]: enum.Error.html#variant.AlphabetOverflow
-    fn expand(s: &str) -> Result<Self> {
+    fn expand(s: &str) -> Result<ShortUuid> {
         Self::expand_with(s, &BASE57)
     }
 
-    /// Expands string with given [`Alphabet`] into `Self`.
-    /// Intermediate [`ShortUuid`] is dropped immediately after expansion.
+    /// Expands string with given [`Alphabet`] into [`ShortUuid`].
     ///
     /// # Errors
     /// * [`Error::AlphabetOverflow`]
@@ -126,7 +121,7 @@ where
     /// # fn main() -> Result<(), Box<Error>> {
     /// let u = Uuid::parse_str("806d0969-95b3-433b-976f-774611fdacbb")?;
     /// let e = Uuid::expand_with("mavTAjNm4NVztDwh4gdSrQ", &BASE57)?;
-    /// assert_eq!(e, u);
+    /// assert_eq!(*(&e as &Uuid), u);
     /// #     Ok(())
     /// # }
     /// ```
@@ -134,17 +129,14 @@ where
     /// [`Alphabet`]: struct.Alphabet.html
     /// [`ShortUuid`]: struct.ShortUuid.html
     /// [`Error::AlphabetOverflow`]: enum.Error.html#variant.AlphabetOverflow
-    fn expand_with(s: &str, abc: &Alphabet) -> Result<Self>;
+    fn expand_with(s: &str, abc: &Alphabet) -> Result<ShortUuid>;
 }
 
 /// Extension trait that allows shortening of uuid-like data into [`ShortUuid`].
 ///
 /// [`ShortUuid`]: struct.ShortUuid.html
-pub trait Shorten
-where
-    Self: Sized,
-{
-    /// Shortens `Self` into [`ShortUuid`]. Uses [`BASE57`] alphabet for shortening.
+pub trait Shorten {
+    /// Shortens `&Self` into [`ShortUuid`]. Uses [`BASE57`] alphabet for shortening.
     ///
     /// # Examples
     /// ```rust
@@ -163,11 +155,11 @@ where
     ///
     /// [`BASE57`]: struct.BASE57.html
     /// [`ShortUuid`]: struct.ShortUuid.html
-    fn shorten(self) -> ShortUuid {
-        self.shorten_with(&BASE57)
+    fn shorten(&self) -> ShortUuid {
+        Self::shorten_with(self, &BASE57)
     }
 
-    /// Shortens `Self` into [`ShortUuid`] with given [`Alphabet`].
+    /// Shortens `&Self` into [`ShortUuid`] with given [`Alphabet`].
     ///
     /// # Examples
     /// ```rust
@@ -186,7 +178,7 @@ where
     ///
     /// [`Alphabet`]: struct.Alphabet.html
     /// [`ShortUuid`]: struct.ShortUuid.html
-    fn shorten_with(self, abc: &Alphabet) -> ShortUuid;
+    fn shorten_with(&self, abc: &Alphabet) -> ShortUuid;
 }
 
 impl ShortUuid {
@@ -286,7 +278,6 @@ impl ShortUuid {
     ///
     /// ```rust
     /// # use std::error::Error;
-    /// # use std::io::Write;
     /// #
     /// # use uuid::Uuid;
     /// # use shorter_uuid::{BASE57, BASE62, ShortUuid};
@@ -296,10 +287,7 @@ impl ShortUuid {
     /// let s62 = ShortUuid::from_uuid(uid, &BASE62);
     /// let s57 = s62.clone().into_alphabet(&BASE57);
     ///
-    /// let mut v = Vec::new();
-    /// write!(v, "{}", s57);
-    /// assert_eq!(v, b"mavTAjNm4NVztDwh4gdSrQ");
-    ///
+    /// assert_eq!(format!("{}", s57.clone()), "mavTAjNm4NVztDwh4gdSrQ");
     /// assert_eq!(s57.into_alphabet(&BASE62), s62);
     /// #     Ok(())
     /// # }
@@ -326,14 +314,14 @@ impl fmt::Display for ShortUuid {
 }
 
 impl Expand for Uuid {
-    fn expand_with(s: &str, abc: &Alphabet) -> Result<Self> {
-        ShortUuid::from_str(s, abc).map(|s| s.uuid)
+    fn expand_with(s: &str, abc: &Alphabet) -> Result<ShortUuid> {
+        ShortUuid::from_str(s, abc)
     }
 }
 
 impl Shorten for Uuid {
-    fn shorten_with(self, abc: &Alphabet) -> ShortUuid {
-        ShortUuid::from_uuid(self, abc)
+    fn shorten_with(&self, abc: &Alphabet) -> ShortUuid {
+        ShortUuid::from_uuid(*self, abc)
     }
 }
 
@@ -424,7 +412,7 @@ mod tests {
         fn uuid_expand_with_eq_from(su in any::<ShortUuid>(), abc in any::<Alphabet>()) {
             let su = su.into_alphabet(&abc);
             let fs = format!("{}", su);
-            prop_assert_eq!(Uuid::expand_with(&fs, &abc), Ok(*(&su as &Uuid)));
+            prop_assert_eq!(Uuid::expand_with(&fs, &abc), Ok(su));
         }
 
         #[test]
